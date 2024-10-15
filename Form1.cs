@@ -1,29 +1,26 @@
 using Microsoft.Graph;
 using Azure.Identity;
 using Microsoft.Graph.Models;
-using System;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using System.Collections.Generic;
 
 namespace LookR
 {
     public partial class Form1 : Form
     {
-        private GraphServiceClient _graphClient;
+        private GraphServiceClient ?_graphClient;
 
         public Form1()
         {
             InitializeComponent();
-            this.Load += Form1_Load; // Subscribe to the Load event
+            Load += Form1_Load;
+            comboBox1.SelectedIndexChanged += comboBox1_SelectedIndexChanged;
+
         }
 
         private async void btnSignIn_Click(object sender, EventArgs e)
         {
             try
             {
-                _graphClient = await SignInAndInitializeGraphClientAsync();
+                _graphClient = SignInAndInitializeGraphClient();
                 MessageBox.Show("Signed in successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 // Hide the login button and show the relevant controls
@@ -34,6 +31,8 @@ namespace LookR
                 comboBox1.Visible = true;
                 comboBox2.Visible = true;
                 dataGridView1.Visible = true;
+                comboBoxMailFolder.Visible = true;
+                lblMailFolder.Visible = true;
 
                 // Populate mailboxes
                 await PopulateMailboxesAsync();
@@ -44,7 +43,7 @@ namespace LookR
             }
         }
 
-        private async Task<GraphServiceClient> SignInAndInitializeGraphClientAsync()
+        private GraphServiceClient SignInAndInitializeGraphClient()
         {
             var credential = new InteractiveBrowserCredential(new InteractiveBrowserCredentialOptions
             {
@@ -134,7 +133,6 @@ namespace LookR
             {
                 var startDate = DateTime.UtcNow - timeSpan;
 
-                // Get the selected mailbox from the ComboBox
                 var selectedMailbox = (MailboxItem)comboBox1.SelectedItem;
                 if (selectedMailbox == null)
                 {
@@ -142,77 +140,56 @@ namespace LookR
                     return;
                 }
 
-                // Fetch all mail folders from the selected mailbox
-                var mailboxFolders = await _graphClient.Users[selectedMailbox.SharedMailboxEmail].MailFolders.GetAsync();
-
-                // Dictionary to store email count per sender per folder
-                var senderFolderCount = new Dictionary<string, Dictionary<string, int>>();
-
-                foreach (var folder in mailboxFolders.Value)
+                var selectedFolder = (MailFolder)comboBoxMailFolder.SelectedItem;
+                if (selectedFolder == null)
                 {
-                    // Fetch emails from each folder
-                    var messages = await _graphClient.Users[selectedMailbox.SharedMailboxEmail].MailFolders[folder.Id].Messages
-                        .GetAsync((config) =>
-                        {
-                            config.QueryParameters.Filter = $"receivedDateTime ge {startDate.ToString("o")}";
-                            config.QueryParameters.Select = new[] { "from", "receivedDateTime" };
-                            config.QueryParameters.Top = 50000;
-                        });
-
-                    // Count emails by sender and store the folder name
-                    foreach (var message in messages.Value)
-                    {
-                        var senderEmail = message.From.EmailAddress.Address;
-                        var folderName = folder.DisplayName;
-
-                        if (senderEmail.Contains("/0") || senderEmail.Contains("/O") || senderEmail.Contains("/o"))
-                        {
-                            continue; // Skip this email
-                        }
-
-                        if (!senderFolderCount.ContainsKey(senderEmail))
-                        {
-                            senderFolderCount[senderEmail] = new Dictionary<string, int>();
-                        }
-
-                        if (senderFolderCount[senderEmail].ContainsKey(folderName))
-                        {
-                            senderFolderCount[senderEmail][folderName]++;
-                        }
-                        else
-                        {
-                            senderFolderCount[senderEmail][folderName] = 1;
-                        }
-                    }
+                    MessageBox.Show("Please select a mail folder.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
 
-                // Prepare data for display, flattening sender and folder information
-                var emailData = senderFolderCount.SelectMany(kvp =>
-                    kvp.Value.Select(folderKvp => new
+                // Fetch emails from the selected mail folder
+                var messages = await _graphClient.Users[selectedMailbox.SharedMailboxEmail].MailFolders[selectedFolder.Id].Messages
+                    .GetAsync((config) =>
                     {
-                        Sender = kvp.Key,
-                        Folder = folderKvp.Key,
-                        Count = folderKvp.Value
+                        config.QueryParameters.Filter = $"receivedDateTime ge {startDate.ToString("o")}";
+                        config.QueryParameters.Select = new[] { "from", "receivedDateTime", "subject" };
+                        config.QueryParameters.Top = 50000;
+                    });
+
+                // Calculate total count of emails per sender
+                var senderEmailCounts = messages.Value
+                    .Where(message => !message.From.EmailAddress.Address.Contains("/0"))
+                    .GroupBy(message => message.From.EmailAddress.Address)
+                    .ToDictionary(g => g.Key, g => g.Count());
+
+                // Prepare data for display
+                var emailData = messages.Value
+                    .Where(message => !message.From.EmailAddress.Address.Contains("/0") && !message.From.EmailAddress.Address.Contains("MicrosoftExchange"))
+                    .Select(message => new
+                    {
+                        Sender = $"{message.From.EmailAddress.Address} - (Total Emails: {senderEmailCounts[message.From.EmailAddress.Address]})",
+                        Subject = message.Subject,
+                        ReceivedDate = message.ReceivedDateTime.Value.DateTime
                     })
-                )
-                .OrderByDescending(x => x.Count) // Sort by email count in descending order
-                .ToList();
+                    .OrderByDescending(message => message.ReceivedDate)
+                    .ToList();
 
                 // Calculate the total count of emails displayed
-                int totalEmailCount = emailData.Sum(entry => entry.Count);
+                int totalEmailCount = emailData.Count;
 
                 // Update the label with the total count of emails displayed
                 lblTotalCount.Text = $"Total Emails: {totalEmailCount}";
 
                 // Bind to the DataGridView
                 dataGridView1.DataSource = emailData;
-                dataGridView1.Visible = true; // Ensure the DataGridView is visible
+                dataGridView1.Visible = true;
             }
             catch (Exception ex)
             {
                 MessageBox.Show($"Error fetching emails: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
+
 
 
         private async void btnRefreshData_Click(object sender, EventArgs e)
@@ -235,16 +212,36 @@ namespace LookR
                     break;
             }
 
-            await GetEmailMessagesAsync(timeSpan); 
+            await GetEmailMessagesAsync(timeSpan);
         }
 
+        private async void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                var selectedMailbox = (MailboxItem)comboBox1.SelectedItem;
+                if (selectedMailbox == null) return;
 
+                // Fetch mail folders for the selected mailbox
+                var mailboxFolders = await _graphClient.Users[selectedMailbox.SharedMailboxEmail].MailFolders.GetAsync();
+
+                // Bind the mail folders to comboBoxMailFolder
+                comboBoxMailFolder.DataSource = mailboxFolders.Value;
+                comboBoxMailFolder.DisplayMember = "DisplayName";
+                comboBoxMailFolder.ValueMember = "Id";
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error fetching mail folders: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
     }
+    
     public class MailboxItem
     {
-        public string DisplayName { get; set; }
-        public string Id { get; set; }
-        public bool IsShared { get; set; }
-        public string SharedMailboxEmail { get; set; }
+        public string? DisplayName { get; set; }
+        public string? Id { get; set; }
+        public bool? IsShared { get; set; }
+        public string? SharedMailboxEmail { get; set; }
     }
 }

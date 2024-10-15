@@ -36,13 +36,15 @@
             btnRefreshData = new Button();
             dataGridView1 = new DataGridView();
             lblTotalCount = new Label();
+            comboBoxMailFolder = new ComboBox();
+            lblMailFolder = new Label();
             ((System.ComponentModel.ISupportInitialize)dataGridView1).BeginInit();
             SuspendLayout();
             // 
             // btnSignIn
             // 
             btnSignIn.AccessibleName = "btnSignIn";
-            btnSignIn.Location = new Point(260, 149);
+            btnSignIn.Location = new Point(496, 280);
             btnSignIn.Name = "btnSignIn";
             btnSignIn.Size = new Size(289, 100);
             btnSignIn.TabIndex = 0;
@@ -59,6 +61,7 @@
             comboBox1.Size = new Size(121, 23);
             comboBox1.TabIndex = 1;
             comboBox1.Visible = false;
+            comboBox1.SelectedIndexChanged += comboBox1_SelectedIndexChanged;
             // 
             // label1
             // 
@@ -74,7 +77,7 @@
             // 
             comboBox2.AccessibleName = "timeFrameComboBox";
             comboBox2.FormattingEnabled = true;
-            comboBox2.Location = new Point(42, 131);
+            comboBox2.Location = new Point(42, 189);
             comboBox2.Name = "comboBox2";
             comboBox2.Size = new Size(121, 23);
             comboBox2.TabIndex = 3;
@@ -83,7 +86,7 @@
             // label2
             // 
             label2.AutoSize = true;
-            label2.Location = new Point(42, 113);
+            label2.Location = new Point(42, 171);
             label2.Name = "label2";
             label2.Size = new Size(69, 15);
             label2.TabIndex = 4;
@@ -93,7 +96,7 @@
             // btnRefreshData
             // 
             btnRefreshData.AccessibleName = "btnRefreshData";
-            btnRefreshData.Location = new Point(42, 172);
+            btnRefreshData.Location = new Point(42, 226);
             btnRefreshData.Name = "btnRefreshData";
             btnRefreshData.Size = new Size(121, 23);
             btnRefreshData.TabIndex = 5;
@@ -104,26 +107,49 @@
             // 
             // dataGridView1
             // 
+            dataGridView1.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+            dataGridView1.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             dataGridView1.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dataGridView1.Location = new Point(214, 78);
+            dataGridView1.Location = new Point(203, 60);
             dataGridView1.Name = "dataGridView1";
-            dataGridView1.Size = new Size(519, 314);
+            dataGridView1.Size = new Size(1010, 556);
             dataGridView1.TabIndex = 6;
             dataGridView1.Visible = false;
             // 
             // lblTotalCount
             // 
             lblTotalCount.AutoSize = true;
-            lblTotalCount.Location = new Point(214, 395);
+            lblTotalCount.Location = new Point(203, 619);
             lblTotalCount.Name = "lblTotalCount";
-            lblTotalCount.Size = new Size(0, 15);
+            lblTotalCount.Size = new Size(84, 15);
             lblTotalCount.TabIndex = 7;
+            // 
+            // comboBoxMailFolder
+            // 
+            comboBoxMailFolder.FormattingEnabled = true;
+            comboBoxMailFolder.Location = new Point(42, 132);
+            comboBoxMailFolder.Name = "comboBoxMailFolder";
+            comboBoxMailFolder.Size = new Size(121, 23);
+            comboBoxMailFolder.TabIndex = 8;
+            comboBoxMailFolder.Visible = false;
+            // 
+            // lblMailFolder
+            // 
+            lblMailFolder.AutoSize = true;
+            lblMailFolder.Location = new Point(42, 114);
+            lblMailFolder.Name = "lblMailFolder";
+            lblMailFolder.Size = new Size(66, 15);
+            lblMailFolder.TabIndex = 9;
+            lblMailFolder.Text = "Mail Folder";
+            lblMailFolder.Visible = false;
             // 
             // Form1
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(800, 450);
+            ClientSize = new Size(1264, 681);
+            Controls.Add(lblMailFolder);
+            Controls.Add(comboBoxMailFolder);
             Controls.Add(lblTotalCount);
             Controls.Add(dataGridView1);
             Controls.Add(btnRefreshData);
@@ -149,5 +175,7 @@
         private Button btnRefreshData;
         private DataGridView dataGridView1;
         private Label lblTotalCount;
+        private ComboBox comboBoxMailFolder;
+        private Label lblMailFolder;
     }
 }
